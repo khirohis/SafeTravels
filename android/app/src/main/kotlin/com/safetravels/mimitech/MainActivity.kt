@@ -1,4 +1,4 @@
-package net.hogelab.safe_travels
+package com.safetravels.mimitech
 
 import io.flutter.embedding.android.FlutterActivity
 
