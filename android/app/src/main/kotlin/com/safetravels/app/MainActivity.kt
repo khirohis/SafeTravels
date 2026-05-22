@@ -1,4 +1,4 @@
-package com.safetravels.mimitech
+package com.safetravels.app
 
 import io.flutter.embedding.android.FlutterActivity
 
