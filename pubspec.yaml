@@ -1,0 +1,22 @@
+name: safe_travels
+description: "SafeTravels - 音波療法アプリ（乗り物酔い緩和など）"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_soloud: ^4.0.6
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
