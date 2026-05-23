@@ -1,5 +1,52 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../view_models/main_view_model.dart';
+
+const double _freqMin = 40.0;
+const double _freqMax = 20000.0;
+const double _durMin = 1.0;
+const double _durMax = 3600.0;
+
+double _freqToSlider(double freq) =>
+    log(freq / _freqMin) / log(_freqMax / _freqMin);
+
+double _sliderToFreq(double t) =>
+    _freqMin * pow(_freqMax / _freqMin, t).toDouble();
+
+double _durToSlider(double dur) =>
+    log(dur / _durMin) / log(_durMax / _durMin);
+
+double _sliderToDur(double t) =>
+    (_durMin * pow(_durMax / _durMin, t)).clamp(_durMin, _durMax);
+
+String _formatDuration(double seconds) {
+  final s = seconds.toInt();
+  if (s < 60) return '$s 秒';
+  if (s < 3600) return '${s ~/ 60} 分 ${s % 60} 秒';
+  final h = s ~/ 3600;
+  final m = (s % 3600) ~/ 60;
+  return m == 0 ? '$h 時間' : '$h 時間 $m 分';
+}
+
+String _formatRemaining(int seconds) {
+  if (seconds < 60) return '残り $seconds 秒';
+  final m = seconds ~/ 60;
+  final s = seconds % 60;
+  if (seconds < 3600) return '残り $m:${s.toString().padLeft(2, '0')}';
+  final h = seconds ~/ 3600;
+  final m2 = (seconds % 3600) ~/ 60;
+  final s2 = seconds % 60;
+  return '残り $h:${m2.toString().padLeft(2, '0')}:${s2.toString().padLeft(2, '0')}';
+}
+
+String _formatFrequency(double freq) {
+  if (freq >= 1000) {
+    final khz = freq / 1000;
+    return '${khz % 1 == 0 ? khz.toInt() : khz.toStringAsFixed(1)} kHz';
+  }
+  return '${freq.toInt()} Hz';
+}
 
 class HomeScreen extends StatelessWidget {
   final MainViewModel viewModel;
@@ -44,16 +91,12 @@ class HomeScreen extends StatelessWidget {
                     textTheme: textTheme,
                   ),
                   const SizedBox(height: 32),
-                  SizedBox(
-                    height: 40,
-                    child: isPlaying
-                        ? Text(
-                            '残り ${viewModel.status.remainingTime} 秒',
-                            style: textTheme.headlineSmall?.copyWith(
-                              color: colorScheme.tertiary,
-                            ),
-                          )
-                        : null,
+                  _PlaybackProgress(
+                    isPlaying: isPlaying,
+                    remainingTime: viewModel.status.remainingTime,
+                    totalDuration: viewModel.duration.toInt(),
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
                   ),
                   const SizedBox(height: 32),
                   _PlayStopButton(
@@ -91,18 +134,18 @@ class _FrequencyControl extends StatelessWidget {
     return Column(
       children: [
         Text(
-          'Frequency',
+          '周波数',
           style: textTheme.labelLarge?.copyWith(color: colorScheme.secondary),
         ),
         Text(
-          '${frequency.toInt()} Hz',
+          _formatFrequency(frequency),
           style: textTheme.displayLarge?.copyWith(color: colorScheme.primary),
         ),
         Slider(
-          value: frequency,
-          min: 40,
-          max: 20000,
-          onChanged: isPlaying ? null : onChanged,
+          value: _freqToSlider(frequency),
+          min: 0,
+          max: 1,
+          onChanged: isPlaying ? null : (t) => onChanged(_sliderToFreq(t)),
         ),
         Text(
           '範囲: 40Hz - 20kHz',
@@ -133,24 +176,71 @@ class _DurationControl extends StatelessWidget {
     return Column(
       children: [
         Text(
-          'Duration',
+          '再生時間',
           style: textTheme.labelLarge?.copyWith(color: colorScheme.secondary),
         ),
         Text(
-          '${duration.toInt()} 秒',
+          _formatDuration(duration),
           style: textTheme.displayMedium?.copyWith(color: colorScheme.primary),
         ),
         Slider(
-          value: duration,
-          min: 1,
-          max: 3600,
-          onChanged: isPlaying ? null : onChanged,
+          value: _durToSlider(duration),
+          min: 0,
+          max: 1,
+          onChanged: isPlaying ? null : (t) => onChanged(_sliderToDur(t)),
         ),
         Text(
-          '範囲: 1秒 - 3600秒',
+          '範囲: 1秒 - 1時間',
           style: textTheme.bodySmall?.copyWith(color: colorScheme.outline),
         ),
       ],
+    );
+  }
+}
+
+class _PlaybackProgress extends StatelessWidget {
+  final bool isPlaying;
+  final int remainingTime;
+  final int totalDuration;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+
+  const _PlaybackProgress({
+    required this.isPlaying,
+    required this.remainingTime,
+    required this.totalDuration,
+    required this.colorScheme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isPlaying) return const SizedBox(height: 56);
+
+    final progress = totalDuration > 0
+        ? 1 - remainingTime / totalDuration
+        : 0.0;
+
+    return SizedBox(
+      height: 56,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(colorScheme.primary),
+            ),
+          ),
+          Text(
+            _formatRemaining(remainingTime),
+            style: textTheme.bodyMedium?.copyWith(color: colorScheme.secondary),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -174,8 +264,7 @@ class _PlayStopButton extends StatelessWidget {
       child: FilledButton(
         style: FilledButton.styleFrom(
           shape: const CircleBorder(),
-          backgroundColor:
-              isPlaying ? colorScheme.error : colorScheme.primary,
+          backgroundColor: isPlaying ? colorScheme.error : colorScheme.primary,
           padding: EdgeInsets.zero,
         ),
         onPressed: onPressed,
