@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/sound_preset.dart';
 import '../view_models/main_view_model.dart';
 
@@ -70,6 +71,43 @@ class HomeScreen extends StatelessWidget {
         final colorScheme = Theme.of(context).colorScheme;
         final textTheme = Theme.of(context).textTheme;
 
+        Future<void> onPresetSelected(SoundPreset preset) async {
+          viewModel.selectPreset(preset);
+          if (preset.warning != null) {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(preset.warning!),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+          if (preset.requiresDisclaimer) {
+            final prefs = await SharedPreferences.getInstance();
+            final key = 'disclaimer_${preset.id}';
+            if (prefs.getBool(key) != true) {
+              await prefs.setBool(key, true);
+              if (context.mounted) {
+                await showDialog<void>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('ご注意'),
+                    content: const Text(
+                      'このアプリは医療機器ではありません。\n症状が続く場合や気になる点がある場合は、医師にご相談ください。',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('確認しました'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            }
+          }
+        }
+
         return Scaffold(
           body: SafeArea(
             child: Column(
@@ -77,7 +115,7 @@ class HomeScreen extends StatelessWidget {
                 _PresetChips(
                   selectedId: viewModel.selectedPresetId,
                   isPlaying: isPlaying,
-                  onSelected: viewModel.selectPreset,
+                  onSelected: onPresetSelected,
                   colorScheme: colorScheme,
                   textTheme: textTheme,
                 ),
@@ -136,7 +174,7 @@ class HomeScreen extends StatelessWidget {
 class _PresetChips extends StatelessWidget {
   final String? selectedId;
   final bool isPlaying;
-  final ValueChanged<SoundPreset> onSelected;
+  final Future<void> Function(SoundPreset) onSelected;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
 
