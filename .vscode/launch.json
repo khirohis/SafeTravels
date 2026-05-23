@@ -2,14 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Android: Install and Run",
-            "type": "pwa-node",
+            "name": "Flutter (実機)",
             "request": "launch",
-            "preLaunchTask": "Android: Install and Run",
-            "runtimeExecutable": "echo",
-            "runtimeArgs": ["Build, Install, and Launch started..."],
-            "console": "internalConsole",
-            "internalConsoleOptions": "openOnSessionStart"
+            "type": "dart",
+            "flutterMode": "debug"
+        },
+        {
+            "name": "Flutter (実機・リリース)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
         }
     ]
 }
