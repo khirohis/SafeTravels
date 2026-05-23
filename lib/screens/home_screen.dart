@@ -141,11 +141,15 @@ class _FrequencyControl extends StatelessWidget {
           _formatFrequency(frequency),
           style: textTheme.displayLarge?.copyWith(color: colorScheme.primary),
         ),
-        Slider(
-          value: _freqToSlider(frequency),
-          min: 0,
-          max: 1,
-          onChanged: isPlaying ? null : (t) => onChanged(_sliderToFreq(t)),
+        _SliderWithDisabledFeedback(
+          isPlaying: isPlaying,
+          child: Slider(
+            value: _freqToSlider(frequency),
+            min: 0,
+            max: 1,
+            semanticFormatterCallback: (v) => _formatFrequency(_sliderToFreq(v)),
+            onChanged: isPlaying ? null : (t) => onChanged(_sliderToFreq(t)),
+          ),
         ),
         Text(
           '範囲: 40Hz - 20kHz',
@@ -183,15 +187,53 @@ class _DurationControl extends StatelessWidget {
           _formatDuration(duration),
           style: textTheme.displayMedium?.copyWith(color: colorScheme.primary),
         ),
-        Slider(
-          value: _durToSlider(duration),
-          min: 0,
-          max: 1,
-          onChanged: isPlaying ? null : (t) => onChanged(_sliderToDur(t)),
+        _SliderWithDisabledFeedback(
+          isPlaying: isPlaying,
+          child: Slider(
+            value: _durToSlider(duration),
+            min: 0,
+            max: 1,
+            semanticFormatterCallback: (v) => _formatDuration(_sliderToDur(v)),
+            onChanged: isPlaying ? null : (t) => onChanged(_sliderToDur(t)),
+          ),
         ),
         Text(
           '範囲: 1秒 - 1時間',
           style: textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+        ),
+      ],
+    );
+  }
+}
+
+class _SliderWithDisabledFeedback extends StatelessWidget {
+  final bool isPlaying;
+  final Widget child;
+
+  const _SliderWithDisabledFeedback({
+    required this.isPlaying,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isPlaying) return child;
+    return Stack(
+      children: [
+        child,
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('再生中は変更できません'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );
