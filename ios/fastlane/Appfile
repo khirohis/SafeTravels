@@ -1,0 +1,5 @@
+app_identifier("com.safetravels.app")
+apple_id(ENV["APPLE_ID"]) # 環境変数 or ~/.zshrc に export APPLE_ID="your@email.com" を追加
+
+itc_team_id("") # App Store Connect チームID（個人開発者は空のままでOK）
+team_id("")     # Apple Developer チームID（個人開発者は空のままでOK）
