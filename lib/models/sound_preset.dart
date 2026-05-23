@@ -6,6 +6,7 @@ class SoundPreset {
   final int durationSeconds;
   final bool isLoop;
   final String? warning;
+  final bool requiresDisclaimer;
 
   const SoundPreset({
     required this.id,
@@ -15,6 +16,7 @@ class SoundPreset {
     required this.durationSeconds,
     required this.isLoop,
     this.warning,
+    this.requiresDisclaimer = false,
   });
 }
 
@@ -36,6 +38,7 @@ const kPresets = <SoundPreset>[
     durationSeconds: 1800,
     isLoop: true,
     warning: 'このアプリは医療機器ではありません。症状が続く場合は医師にご相談ください',
+    requiresDisclaimer: true,
   ),
   SoundPreset(
     id: 'sleep',
@@ -45,6 +48,7 @@ const kPresets = <SoundPreset>[
     durationSeconds: 3600,
     isLoop: true,
     warning: '就寝中は特に音量を下げてください',
+    requiresDisclaimer: true,
   ),
   SoundPreset(
     id: 'focus',
