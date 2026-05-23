@@ -20,7 +20,7 @@ platform :ios do
     # TestFlight にアップロード（api_key で App Store Connect 認証）
     pilot(
       api_key: api_key,
-      ipa: "../build/ios/ipa/safetravels.ipa",
+      ipa: "../build/ios/ipa/オトデール.ipa",
       skip_waiting_for_build_processing: false,
     )
   end
