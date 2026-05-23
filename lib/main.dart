@@ -6,7 +6,6 @@ import 'view_models/main_view_model.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final soundService = SoundService();
-  await soundService.init();
   final viewModel = MainViewModel(soundService);
   runApp(SafeTravelsApp(viewModel: viewModel));
 }
