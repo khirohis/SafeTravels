@@ -14,7 +14,7 @@
 | フレームワーク | Flutter 3.41.4（FVM管理） |
 | 音声エンジン | flutter_soloud 4.0.6 |
 | 状態管理 | ChangeNotifier + ListenableBuilder |
-| Bundle ID | com.safetravels.mimitech |
+| Bundle ID | com.safetravels.app |
 | 最低iOS版本 | 13.0 |
 
 ## 機能
