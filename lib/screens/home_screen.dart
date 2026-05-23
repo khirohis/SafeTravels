@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../models/sound_preset.dart';
 import '../view_models/main_view_model.dart';
 
 const double _freqMin = 40.0;
@@ -65,51 +66,129 @@ class HomeScreen extends StatelessWidget {
         }
 
         final isPlaying = viewModel.status.isPlaying;
+        final isLoop = viewModel.isLoop;
         final colorScheme = Theme.of(context).colorScheme;
         final textTheme = Theme.of(context).textTheme;
 
         return Scaffold(
           body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _FrequencyControl(
-                    frequency: viewModel.frequency,
-                    isPlaying: isPlaying,
-                    onChanged: viewModel.updateFrequency,
-                    colorScheme: colorScheme,
-                    textTheme: textTheme,
+            child: Column(
+              children: [
+                _PresetChips(
+                  selectedId: viewModel.selectedPresetId,
+                  isPlaying: isPlaying,
+                  onSelected: viewModel.selectPreset,
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _FrequencyControl(
+                          frequency: viewModel.frequency,
+                          isPlaying: isPlaying,
+                          onChanged: viewModel.updateFrequency,
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                        ),
+                        const SizedBox(height: 40),
+                        if (!isLoop)
+                          _DurationControl(
+                            duration: viewModel.duration,
+                            isPlaying: isPlaying,
+                            onChanged: viewModel.updateDuration,
+                            colorScheme: colorScheme,
+                            textTheme: textTheme,
+                          ),
+                        if (isLoop)
+                          _LoopBadge(colorScheme: colorScheme, textTheme: textTheme),
+                        const SizedBox(height: 32),
+                        _PlaybackProgress(
+                          isPlaying: isPlaying,
+                          isLoop: isLoop,
+                          remainingTime: viewModel.status.remainingTime,
+                          totalDuration: viewModel.duration.toInt(),
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                        ),
+                        const SizedBox(height: 32),
+                        _PlayStopButton(
+                          isPlaying: isPlaying,
+                          onPressed: viewModel.togglePlayback,
+                          colorScheme: colorScheme,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 40),
-                  _DurationControl(
-                    duration: viewModel.duration,
-                    isPlaying: isPlaying,
-                    onChanged: viewModel.updateDuration,
-                    colorScheme: colorScheme,
-                    textTheme: textTheme,
-                  ),
-                  const SizedBox(height: 32),
-                  _PlaybackProgress(
-                    isPlaying: isPlaying,
-                    remainingTime: viewModel.status.remainingTime,
-                    totalDuration: viewModel.duration.toInt(),
-                    colorScheme: colorScheme,
-                    textTheme: textTheme,
-                  ),
-                  const SizedBox(height: 32),
-                  _PlayStopButton(
-                    isPlaying: isPlaying,
-                    onPressed: viewModel.togglePlayback,
-                    colorScheme: colorScheme,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _PresetChips extends StatelessWidget {
+  final String? selectedId;
+  final bool isPlaying;
+  final ValueChanged<SoundPreset> onSelected;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+
+  const _PresetChips({
+    required this.selectedId,
+    required this.isPlaying,
+    required this.onSelected,
+    required this.colorScheme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: kPresets.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final preset = kPresets[i];
+          final selected = preset.id == selectedId;
+          return ChoiceChip(
+            label: Text('${preset.emoji} ${preset.label}'),
+            selected: selected,
+            onSelected: isPlaying ? null : (_) => onSelected(preset),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LoopBadge extends StatelessWidget {
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+
+  const _LoopBadge({required this.colorScheme, required this.textTheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.loop, size: 16, color: colorScheme.secondary),
+        const SizedBox(width: 6),
+        Text(
+          'ループ再生',
+          style: textTheme.bodyMedium?.copyWith(color: colorScheme.secondary),
+        ),
+      ],
     );
   }
 }
@@ -242,6 +321,7 @@ class _SliderWithDisabledFeedback extends StatelessWidget {
 
 class _PlaybackProgress extends StatelessWidget {
   final bool isPlaying;
+  final bool isLoop;
   final int remainingTime;
   final int totalDuration;
   final ColorScheme colorScheme;
@@ -249,6 +329,7 @@ class _PlaybackProgress extends StatelessWidget {
 
   const _PlaybackProgress({
     required this.isPlaying,
+    required this.isLoop,
     required this.remainingTime,
     required this.totalDuration,
     required this.colorScheme,
@@ -258,6 +339,25 @@ class _PlaybackProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isPlaying) return const SizedBox(height: 56);
+
+    if (isLoop) {
+      return SizedBox(
+        height: 56,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            LinearProgressIndicator(
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(colorScheme.primary),
+            ),
+            Text(
+              '再生中',
+              style: textTheme.bodyMedium?.copyWith(color: colorScheme.secondary),
+            ),
+          ],
+        ),
+      );
+    }
 
     final progress = totalDuration > 0
         ? 1 - remainingTime / totalDuration

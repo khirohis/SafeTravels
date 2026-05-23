@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import '../models/sound_preset.dart';
 import '../models/sound_status.dart';
 import '../services/sound_service.dart';
 
@@ -9,11 +10,18 @@ class MainViewModel extends ChangeNotifier {
 
   double _frequency = 440.0;
   double _duration = 60.0;
+  bool _isLoop = false;
+  String? _selectedPresetId;
   SoundStatus _status = const SoundStatus();
   Timer? _timer;
   bool _isInitialized = false;
 
   bool get isInitialized => _isInitialized;
+  double get frequency => _frequency;
+  double get duration => _duration;
+  bool get isLoop => _isLoop;
+  String? get selectedPresetId => _selectedPresetId;
+  SoundStatus get status => _status;
 
   MainViewModel(this._service) {
     SchedulerBinding.instance.addPostFrameCallback((_) => _initialize());
@@ -25,9 +33,13 @@ class MainViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  double get frequency => _frequency;
-  double get duration => _duration;
-  SoundStatus get status => _status;
+  void selectPreset(SoundPreset preset) {
+    _selectedPresetId = preset.id;
+    _frequency = preset.frequency;
+    _duration = preset.durationSeconds.toDouble();
+    _isLoop = preset.isLoop;
+    notifyListeners();
+  }
 
   void updateFrequency(double value) {
     _frequency = value;
@@ -50,21 +62,24 @@ class MainViewModel extends ChangeNotifier {
   Future<void> _startPlayback() async {
     _status = SoundStatus(
       isPlaying: true,
-      remainingTime: _duration.toInt(),
+      isLoop: _isLoop,
+      remainingTime: _isLoop ? 0 : _duration.toInt(),
     );
     notifyListeners();
 
     await _service.play(_frequency.toInt(), loop: true);
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final newRemaining = _status.remainingTime - 1;
-      if (newRemaining <= 0) {
-        _stopPlayback();
-      } else {
-        _status = _status.copyWith(remainingTime: newRemaining);
-        notifyListeners();
-      }
-    });
+    if (!_isLoop) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        final newRemaining = _status.remainingTime - 1;
+        if (newRemaining <= 0) {
+          _stopPlayback();
+        } else {
+          _status = _status.copyWith(remainingTime: newRemaining);
+          notifyListeners();
+        }
+      });
+    }
   }
 
   Future<void> _stopPlayback() async {
