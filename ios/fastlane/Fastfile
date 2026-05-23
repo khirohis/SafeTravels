@@ -1,0 +1,27 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "TestFlightにビルドをアップロード"
+  lane :beta do
+    # App Store Connect API キー（~/.zshrc の環境変数から取得）
+    # APP_STORE_CONNECT_API_KEY_KEY_ID     : APIキーのKey ID
+    # APP_STORE_CONNECT_API_KEY_ISSUER_ID  : App Store Connect の Issuer ID
+    # APP_STORE_CONNECT_API_KEY_KEY_FILEPATH: .p8ファイルのパス（未設定時は ~/.appstoreconnect/private_keys/ を参照）
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+      key_filepath: ENV.fetch("APP_STORE_CONNECT_API_KEY_KEY_FILEPATH",
+        "#{Dir.home}/.appstoreconnect/private_keys/AuthKey_#{ENV['APP_STORE_CONNECT_API_KEY_KEY_ID']}.p8"),
+    )
+
+    # Flutter ビルド
+    sh("cd ../../ && fvm flutter build ipa --release")
+
+    # TestFlight にアップロード（api_key で App Store Connect 認証）
+    pilot(
+      api_key: api_key,
+      ipa: "../build/ios/ipa/safetravels.ipa",
+      skip_waiting_for_build_processing: false,
+    )
+  end
+end

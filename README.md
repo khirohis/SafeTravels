@@ -44,6 +44,24 @@ fvm flutter pub get
 fvm flutter run
 ```
 
+## TestFlight配信
+
+fastlaneで自動化済み。以下の環境変数を `~/.zshrc` に設定してから実行する。
+
+```bash
+export APPLE_ID="your@email.com"
+export APP_STORE_CONNECT_API_KEY_KEY_ID="XXXXXXXXXX"
+export APP_STORE_CONNECT_API_KEY_ISSUER_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# .p8 ファイルは ~/.appstoreconnect/private_keys/ に配置（パス指定不要）
+```
+
+```bash
+cd ios
+fastlane beta
+```
+
+`fvm flutter build ipa --release` → TestFlightアップロードまで自動実行される。
+
 ## プロジェクト構成
 
 ```
