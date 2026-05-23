@@ -46,6 +46,11 @@ class MainViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void stepFrequency(int delta) {
+    _frequency = (_frequency + delta).clamp(40.0, 20000.0);
+    notifyListeners();
+  }
+
   void updateDuration(double value) {
     _duration = value;
     notifyListeners();

@@ -116,6 +116,7 @@ class HomeScreen extends StatelessWidget {
                   selectedId: viewModel.selectedPresetId,
                   isPlaying: isPlaying,
                   onSelected: onPresetSelected,
+                  onInfo: (preset) => _showPresetDetails(context, preset, colorScheme, textTheme),
                   colorScheme: colorScheme,
                   textTheme: textTheme,
                 ),
@@ -129,6 +130,7 @@ class HomeScreen extends StatelessWidget {
                           frequency: viewModel.frequency,
                           isPlaying: isPlaying,
                           onChanged: viewModel.updateFrequency,
+                          onStep: isPlaying ? null : viewModel.stepFrequency,
                           colorScheme: colorScheme,
                           textTheme: textTheme,
                         ),
@@ -171,10 +173,82 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+void _showPresetDetails(
+  BuildContext context,
+  SoundPreset preset,
+  ColorScheme colorScheme,
+  TextTheme textTheme,
+) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.5,
+      maxChildSize: 0.85,
+      builder: (_, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Text(
+            '${preset.emoji} ${preset.label}',
+            style: textTheme.titleLarge?.copyWith(color: colorScheme.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            preset.details,
+            style: textTheme.bodyMedium?.copyWith(height: 1.6),
+          ),
+          if (preset.warning != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber, size: 18, color: colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      preset.warning!,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
 class _PresetChips extends StatelessWidget {
   final String? selectedId;
   final bool isPlaying;
   final Future<void> Function(SoundPreset) onSelected;
+  final void Function(SoundPreset) onInfo;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
 
@@ -182,6 +256,7 @@ class _PresetChips extends StatelessWidget {
     required this.selectedId,
     required this.isPlaying,
     required this.onSelected,
+    required this.onInfo,
     required this.colorScheme,
     required this.textTheme,
   });
@@ -198,10 +273,25 @@ class _PresetChips extends StatelessWidget {
         itemBuilder: (context, i) {
           final preset = kPresets[i];
           final selected = preset.id == selectedId;
-          return ChoiceChip(
-            label: Text('${preset.emoji} ${preset.label}'),
-            selected: selected,
-            onSelected: isPlaying ? null : (_) => onSelected(preset),
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ChoiceChip(
+                label: Text('${preset.emoji} ${preset.label}'),
+                selected: selected,
+                onSelected: isPlaying ? null : (_) => onSelected(preset),
+              ),
+              if (selected)
+                IconButton(
+                  icon: Icon(Icons.info_outline,
+                      size: 18, color: colorScheme.primary),
+                  onPressed: () => onInfo(preset),
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
+                  visualDensity: VisualDensity.compact,
+                ),
+            ],
           );
         },
       ),
@@ -235,6 +325,7 @@ class _FrequencyControl extends StatelessWidget {
   final double frequency;
   final bool isPlaying;
   final ValueChanged<double> onChanged;
+  final void Function(int delta)? onStep;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
 
@@ -242,6 +333,7 @@ class _FrequencyControl extends StatelessWidget {
     required this.frequency,
     required this.isPlaying,
     required this.onChanged,
+    required this.onStep,
     required this.colorScheme,
     required this.textTheme,
   });
@@ -258,6 +350,17 @@ class _FrequencyControl extends StatelessWidget {
           _formatFrequency(frequency),
           style: textTheme.displayLarge?.copyWith(color: colorScheme.primary),
         ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (final delta in [-100, -10, 10, 100])
+              _StepButton(
+                label: '${delta > 0 ? '+' : ''}$delta',
+                onPressed: onStep != null ? () => onStep!(delta) : null,
+                colorScheme: colorScheme,
+              ),
+          ],
+        ),
         _SliderWithDisabledFeedback(
           isPlaying: isPlaying,
           child: Slider(
@@ -273,6 +376,35 @@ class _FrequencyControl extends StatelessWidget {
           style: textTheme.bodySmall?.copyWith(color: colorScheme.outline),
         ),
       ],
+    );
+  }
+}
+
+class _StepButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final ColorScheme colorScheme;
+
+  const _StepButton({
+    required this.label,
+    required this.onPressed,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          side: BorderSide(color: colorScheme.outline),
+        ),
+        onPressed: onPressed,
+        child: Text(label, style: TextStyle(fontSize: 12, color: colorScheme.secondary)),
+      ),
     );
   }
 }
