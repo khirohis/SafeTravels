@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import '../models/sound_status.dart';
 import '../services/sound_service.dart';
 
@@ -10,8 +11,19 @@ class MainViewModel extends ChangeNotifier {
   double _duration = 60.0;
   SoundStatus _status = const SoundStatus();
   Timer? _timer;
+  bool _isInitialized = false;
 
-  MainViewModel(this._service);
+  bool get isInitialized => _isInitialized;
+
+  MainViewModel(this._service) {
+    SchedulerBinding.instance.addPostFrameCallback((_) => _initialize());
+  }
+
+  Future<void> _initialize() async {
+    await _service.init();
+    _isInitialized = true;
+    notifyListeners();
+  }
 
   double get frequency => _frequency;
   double get duration => _duration;

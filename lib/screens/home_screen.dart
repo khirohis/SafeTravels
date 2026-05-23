@@ -11,6 +11,12 @@ class HomeScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: viewModel,
       builder: (context, _) {
+        if (!viewModel.isInitialized) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
         final isPlaying = viewModel.status.isPlaying;
         final colorScheme = Theme.of(context).colorScheme;
         final textTheme = Theme.of(context).textTheme;
