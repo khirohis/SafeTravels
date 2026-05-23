@@ -48,16 +48,13 @@ class MainViewModel extends ChangeNotifier {
   }
 
   Future<void> _startPlayback() async {
-    final durationSecs = _duration.toInt();
     _status = SoundStatus(
       isPlaying: true,
-      frequency: _frequency.toInt(),
-      duration: durationSecs,
-      remainingTime: durationSecs,
+      remainingTime: _duration.toInt(),
     );
     notifyListeners();
 
-    await _service.play(_frequency.toInt());
+    await _service.play(_frequency.toInt(), loop: true);
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       final newRemaining = _status.remainingTime - 1;
