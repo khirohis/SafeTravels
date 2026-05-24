@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -14,12 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -29,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.hogelab.android.safetravels.model.SoundStatus
@@ -53,6 +57,7 @@ class MainActivity : ComponentActivity() {
                         soundStatus = soundStatus,
                         onDurationChange = viewModel::updateDuration,
                         onTogglePlayback = viewModel::togglePlayback,
+                        onStopPlayback = viewModel::stopPlayback,
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
@@ -67,9 +72,12 @@ fun SoundControlPanel(
     soundStatus: SoundStatus,
     onDurationChange: (Float) -> Unit,
     onTogglePlayback: () -> Unit,
+    onStopPlayback: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isPlaying = soundStatus.isPlaying
+    val isActive = soundStatus.isPlaying || soundStatus.isPaused
+    val isPaused = soundStatus.isPaused
+    val isActuallyPlaying = soundStatus.isPlaying && !isPaused
 
     Column(
         modifier = modifier
@@ -81,12 +89,12 @@ fun SoundControlPanel(
         // Frequency Display (Fixed)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "Frequency",
+                text = stringResource(R.string.label_frequency),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.secondary
             )
             Text(
-                text = "100 Hz",
+                text = "100 ${stringResource(R.string.unit_hz)}",
                 style = MaterialTheme.typography.displayLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -95,12 +103,12 @@ fun SoundControlPanel(
         // Duration Control
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "Duration",
+                text = stringResource(R.string.label_duration),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.secondary
             )
             Text(
-                text = "${duration.toInt()} sec",
+                text = "${duration.toInt()} ${stringResource(R.string.unit_sec)}",
                 style = MaterialTheme.typography.displayMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -109,41 +117,70 @@ fun SoundControlPanel(
                 onValueChange = onDurationChange,
                 valueRange = 1f..180f,
                 modifier = Modifier.padding(horizontal = 16.dp),
-                enabled = !isPlaying
+                enabled = !isActive
             )
             Text(
-                text = "Range: 1s - 180s",
+                text = stringResource(R.string.label_range_duration),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )
         }
 
         // Playback Status (Remaining Time)
-        if (isPlaying) {
+        if (isActive) {
             Text(
-                text = "Remaining: ${soundStatus.remainingTime}s",
+                text = stringResource(R.string.format_remaining, soundStatus.remainingTime),
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.tertiary
+                color = if (isPaused) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary
             )
         } else {
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        // Large Circular Control Button
-        FilledIconButton(
-            onClick = onTogglePlayback,
-            modifier = Modifier.size(100.dp),
-            shape = CircleShape,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = if (isPlaying) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
-            )
+        // Playback Controls
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
-                contentDescription = if (isPlaying) "Stop" else "Start",
-                modifier = Modifier.size(48.dp)
-            )
+            // Play/Pause Button
+            FilledIconButton(
+                onClick = onTogglePlayback,
+                modifier = Modifier.size(80.dp),
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                )
+            ) {
+                Icon(
+                    imageVector = if (isActuallyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isActuallyPlaying) {
+                        stringResource(R.string.content_desc_pause)
+                    } else if (isPaused) {
+                        stringResource(R.string.content_desc_resume)
+                    } else {
+                        stringResource(R.string.content_desc_start)
+                    },
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+
+            // Stop Button
+            OutlinedIconButton(
+                onClick = onStopPlayback,
+                modifier = Modifier.size(80.dp),
+                shape = CircleShape,
+                enabled = isActive,
+                colors = IconButtonDefaults.outlinedIconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Stop,
+                    contentDescription = stringResource(R.string.content_desc_stop),
+                    modifier = Modifier.size(40.dp)
+                )
+            }
         }
     }
 }
@@ -156,7 +193,8 @@ fun SoundControlPanelPreview() {
             duration = 60f,
             soundStatus = SoundStatus(isPlaying = false),
             onDurationChange = {},
-            onTogglePlayback = {}
+            onTogglePlayback = {},
+            onStopPlayback = {}
         )
     }
 }

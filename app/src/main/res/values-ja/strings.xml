@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">SafeTravels</string>
+    <string name="label_frequency">周波数</string>
+    <string name="label_duration">再生時間</string>
+    <string name="unit_hz">Hz</string>
+    <string name="unit_sec">秒</string>
+    <string name="format_remaining">残り時間: %1$d秒</string>
+    <string name="content_desc_start">開始</string>
+    <string name="content_desc_pause">一時停止</string>
+    <string name="content_desc_resume">再開</string>
+    <string name="content_desc_stop">停止</string>
+    <string name="label_range_duration">範囲: 1秒 - 180秒</string>
+    <string name="notification_channel_name">サウンドサービス・チャンネル</string>
+    <string name="notification_title">SafeTravels サウンドサービス</string>
+    <string name="notification_content">サウンドを再生中です…</string>
+    <string name="notification_content_paused">一時停止中</string>
+</resources>
