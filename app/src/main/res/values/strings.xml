@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">SafeTravels</string>
+    <string name="label_frequency">Frequency</string>
+    <string name="label_duration">Duration</string>
+    <string name="unit_hz">Hz</string>
+    <string name="unit_sec">sec</string>
+    <string name="format_remaining">Remaining: %1$ds</string>
+    <string name="content_desc_start">Start</string>
+    <string name="content_desc_pause">Pause</string>
+    <string name="content_desc_resume">Resume</string>
+    <string name="content_desc_stop">Stop</string>
+    <string name="label_range_duration">Range: 1s - 180s</string>
+    <string name="notification_channel_name">Sound Service Channel</string>
+    <string name="notification_title">SafeTravels Sound Service</string>
+    <string name="notification_content">Playing sound...</string>
+    <string name="notification_content_paused">Paused</string>
 </resources>

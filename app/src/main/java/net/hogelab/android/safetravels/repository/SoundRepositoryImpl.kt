@@ -1,8 +1,12 @@
 package net.hogelab.android.safetravels.repository
 
+import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,14 +16,37 @@ import javax.inject.Inject
 import kotlin.math.PI
 import kotlin.math.sin
 
-class SoundRepositoryImpl @Inject constructor() : SoundRepository {
+class SoundRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context
+) : SoundRepository {
     private val _status = MutableStateFlow(SoundStatus())
     override val status: StateFlow<SoundStatus> = _status.asStateFlow()
 
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var audioTrack: AudioTrack? = null
     private var playbackJob: Job? = null
     private var timerJob: Job? = null
     private val repositoryScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                stop()
+            }
+        }
+    }
+
+    private val audioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+        .build()
+
+    private val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+        .setAudioAttributes(audioAttributes)
+        .setAcceptsDelayedFocusGain(false)
+        .setOnAudioFocusChangeListener(focusChangeListener)
+        .build()
 
     private val sampleRate = 44100
     private val bufferSize = AudioTrack.getMinBufferSize(
@@ -29,10 +56,16 @@ class SoundRepositoryImpl @Inject constructor() : SoundRepository {
     )
 
     override fun play(frequency: Int, durationSeconds: Int) {
-        stop() // Stop any current playback
+        val result = audioManager.requestAudioFocus(focusRequest)
+        if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            return
+        }
+
+        stopPlayback() // Stop any current playback jobs without abandoning focus
 
         _status.value = SoundStatus(
             isPlaying = true,
+            isPaused = false,
             frequency = frequency,
             duration = durationSeconds,
             remainingTime = durationSeconds
@@ -47,7 +80,52 @@ class SoundRepositoryImpl @Inject constructor() : SoundRepository {
         }
     }
 
+    override fun pause() {
+        if (!_status.value.isPlaying || _status.value.isPaused) return
+
+        playbackJob?.cancel()
+        timerJob?.cancel()
+
+        audioTrack?.let {
+            try {
+                if (it.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                    it.stop()
+                }
+                it.release()
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+        audioTrack = null
+        _status.value = _status.value.copy(isPlaying = true, isPaused = true)
+    }
+
+    override fun resume() {
+        val status = _status.value
+        if (!status.isPlaying || !status.isPaused) return
+
+        val result = audioManager.requestAudioFocus(focusRequest)
+        if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            return
+        }
+
+        _status.value = status.copy(isPaused = false)
+
+        playbackJob = repositoryScope.launch {
+            startAudioTrack(status.frequency)
+        }
+
+        timerJob = repositoryScope.launch {
+            startTimer(status.remainingTime)
+        }
+    }
+
     override fun stop() {
+        audioManager.abandonAudioFocusRequest(focusRequest)
+        stopPlayback()
+    }
+
+    private fun stopPlayback() {
         playbackJob?.cancel()
         timerJob?.cancel()
         
@@ -62,17 +140,12 @@ class SoundRepositoryImpl @Inject constructor() : SoundRepository {
             }
         }
         audioTrack = null
-        _status.value = _status.value.copy(isPlaying = false, remainingTime = 0)
+        _status.value = SoundStatus() // Reset all
     }
 
     private suspend fun startAudioTrack(frequency: Int) {
         audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
-            )
+            .setAudioAttributes(audioAttributes)
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
