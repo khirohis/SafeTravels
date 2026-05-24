@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -30,20 +31,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import net.hogelab.android.safetravels.model.SoundStatus
 import net.hogelab.android.safetravels.ui.theme.SafeTravelsTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val viewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SafeTravelsTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val viewModel: MainViewModel = viewModel()
+                    val duration by viewModel.duration.collectAsState()
+                    val soundStatus by viewModel.soundStatus.collectAsState()
+
                     SoundControlPanel(
-                        viewModel = viewModel,
-                        modifier = Modifier.padding(innerPadding)
+                        duration = duration,
+                        soundStatus = soundStatus,
+                        onDurationChange = viewModel::updateDuration,
+                        onTogglePlayback = viewModel::togglePlayback,
+                        modifier = Modifier.padding(innerPadding),
                     )
                 }
             }
@@ -53,13 +63,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SoundControlPanel(
-    viewModel: MainViewModel,
+    duration: Float,
+    soundStatus: SoundStatus,
+    onDurationChange: (Float) -> Unit,
+    onTogglePlayback: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val frequency by viewModel.frequency.collectAsState()
-    val duration by viewModel.duration.collectAsState()
-    val soundStatus by viewModel.soundStatus.collectAsState()
-
     val isPlaying = soundStatus.isPlaying
 
     Column(
@@ -69,7 +78,7 @@ fun SoundControlPanel(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterVertically)
     ) {
-        // Frequency Control
+        // Frequency Display (Fixed)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Frequency",
@@ -77,21 +86,9 @@ fun SoundControlPanel(
                 color = MaterialTheme.colorScheme.secondary
             )
             Text(
-                text = "${frequency.toInt()} Hz",
+                text = "100 Hz",
                 style = MaterialTheme.typography.displayLarge,
                 color = MaterialTheme.colorScheme.primary
-            )
-            Slider(
-                value = frequency,
-                onValueChange = { viewModel.updateFrequency(it) },
-                valueRange = 100f..20000f,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                enabled = !isPlaying
-            )
-            Text(
-                text = "Range: 100Hz - 20kHz",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
             )
         }
 
@@ -109,7 +106,7 @@ fun SoundControlPanel(
             )
             Slider(
                 value = duration,
-                onValueChange = { viewModel.updateDuration(it) },
+                onValueChange = onDurationChange,
                 valueRange = 1f..180f,
                 modifier = Modifier.padding(horizontal = 16.dp),
                 enabled = !isPlaying
@@ -134,7 +131,7 @@ fun SoundControlPanel(
 
         // Large Circular Control Button
         FilledIconButton(
-            onClick = { viewModel.togglePlayback() },
+            onClick = onTogglePlayback,
             modifier = Modifier.size(100.dp),
             shape = CircleShape,
             colors = IconButtonDefaults.filledIconButtonColors(
@@ -155,6 +152,11 @@ fun SoundControlPanel(
 @Composable
 fun SoundControlPanelPreview() {
     SafeTravelsTheme {
-        SoundControlPanel(viewModel = MainViewModel())
+        SoundControlPanel(
+            duration = 60f,
+            soundStatus = SoundStatus(isPlaying = false),
+            onDurationChange = {},
+            onTogglePlayback = {}
+        )
     }
 }
