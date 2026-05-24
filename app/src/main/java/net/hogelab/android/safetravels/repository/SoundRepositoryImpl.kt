@@ -8,10 +8,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.hogelab.android.safetravels.model.SoundStatus
+import javax.inject.Inject
 import kotlin.math.PI
 import kotlin.math.sin
 
-class SoundRepositoryImpl : SoundRepository {
+class SoundRepositoryImpl @Inject constructor() : SoundRepository {
     private val _status = MutableStateFlow(SoundStatus())
     override val status: StateFlow<SoundStatus> = _status.asStateFlow()
 
@@ -101,8 +102,16 @@ class SoundRepositoryImpl : SoundRepository {
             }
         } finally {
             withContext(NonCancellable) {
-                audioTrack?.stop()
-                audioTrack?.release()
+                try {
+                    audioTrack?.let {
+                        if (it.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                            it.stop()
+                        }
+                        it.release()
+                    }
+                } catch (e: Exception) {
+                    // Ignore already released or invalid state exceptions
+                }
                 audioTrack = null
             }
         }
